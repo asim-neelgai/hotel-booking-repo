@@ -24,16 +24,27 @@ class User:
             print("Username already taken.")
             return None
 
+        # If this is the first user, make them admin
+        is_first_user = df.empty
+        is_admin = is_first_user  # First user is admin, others are normal users
+
         new_row = {
             'username': username,
             'password': password,
             'email': email,
-            'is_admin': False
+            'is_admin': is_admin
         }
-        df = df.append(new_row, ignore_index=True)
+        new_row_df = pd.DataFrame([new_row])
+        df = pd.concat([df, new_row_df], ignore_index=True)
+
         df.to_excel(users_file, index=False)
-        print("Registration successful!")
-        return User(username, password, email)
+
+        if is_admin:
+            print("First user registered as admin.")
+        else:
+            print("Registration successful!")
+
+        return User(username, password, email, is_admin)
 
     @staticmethod
     def login(username, password):
