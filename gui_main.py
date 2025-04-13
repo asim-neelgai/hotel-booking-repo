@@ -5,13 +5,16 @@ import pandas as pd
 from models.user import User
 from models.admin import Admin
 from models.booking import Booking
+from tkcalendar import DateEntry
+from datetime import timedelta
+
+
 
 def main_window():
     """ The initial window with 'Login', 'Register', and 'Exit' buttons. """
     root = tk.Tk()
     root.title("Western Hotel Booking System")
 
-    # Set a default size and padding
     root.geometry("400x250")
     root.configure(padx=20, pady=20)
 
@@ -24,7 +27,6 @@ def main_window():
                              command=lambda: open_login_window(root))
     login_button.pack(pady=5)
 
-    # ----------- NEW: Register Button -----------
     register_button = tk.Button(root, text="Register", width=12, 
                                 font=("Arial", 12),
                                 command=lambda: open_register_window(root))
@@ -62,11 +64,9 @@ def open_login_window(parent):
                                                         login_window))
     login_btn.grid(row=2, column=0, columnspan=2, pady=10)
 
-    # Let columns expand proportionally
     frame.columnconfigure(0, weight=1)
     frame.columnconfigure(1, weight=2)
 
-# ----------- NEW: Register Window -----------
 def open_register_window(parent):
     """ Opens a separate window for user registration. """
     reg_window = tk.Toplevel(parent)
@@ -96,7 +96,6 @@ def open_register_window(parent):
                                                     reg_window))
     register_btn.grid(row=3, column=0, columnspan=2, pady=15)
 
-    # Let columns expand proportionally
     frame.columnconfigure(0, weight=1)
     frame.columnconfigure(1, weight=2)
 
@@ -105,12 +104,10 @@ import re
 
 def handle_register(username, password, email, reg_window):
     """ Handles user registration via user.py -> User.register """
-    # Basic input validation
     if not username or not password or not email:
         messagebox.showerror("Error", "All fields are required.")
         return
     
-    # Optional email format check (very basic regex for demonstration)
     email_pattern = r"^[^@]+@[^@]+\.[^@]+$"
     if not re.match(email_pattern, email):
         messagebox.showerror("Error", "Please enter a valid email address.")
@@ -132,7 +129,6 @@ def handle_login(username, password, login_window):
     if user_obj:
         login_window.destroy()
         if user_obj.is_admin:
-            # Manually create an Admin object from the user's credentials
             admin_obj = Admin(user_obj.username, user_obj.password, user_obj.email)
             messagebox.showinfo("Login Success", "Welcome Admin!")
             open_admin_dashboard(admin_obj)
@@ -387,13 +383,13 @@ def book_room_ui(parent, user_obj):
     tk.Label(form_frame, text="Check-in (YYYY-MM-DD):", font=("Arial", 12)).grid(row=1, column=0, 
                                                                                 padx=5, pady=5, 
                                                                                 sticky="e")
-    checkin_entry = tk.Entry(form_frame, font=("Arial", 12))
+    checkin_entry = DateEntry(form_frame, font=("Arial", 12), date_pattern="yyyy-mm-dd")
     checkin_entry.grid(row=1, column=1, padx=5, pady=5, sticky="w")
 
     tk.Label(form_frame, text="Check-out (YYYY-MM-DD):", font=("Arial", 12)).grid(row=2, column=0, 
                                                                                  padx=5, pady=5, 
                                                                                  sticky="e")
-    checkout_entry = tk.Entry(form_frame, font=("Arial", 12))
+    checkout_entry = DateEntry(form_frame, font=("Arial", 12), date_pattern="yyyy-mm-dd")
     checkout_entry.grid(row=2, column=1, padx=5, pady=5, sticky="w")
 
     def on_book():
@@ -420,24 +416,33 @@ def book_room_ui(parent, user_obj):
 
 
 def is_room_available(room_id, check_in, check_out):
-    """ Checking for room availability by scanning the bookings file. """
-    import pandas as pd
-    import os
-
+    """ Check if the room is available for the given date range. """
     bookings_file = os.path.join('data', 'bookings.xlsx')
     if not os.path.exists(bookings_file):
         return True
 
     df = pd.read_excel(bookings_file)
-    same_room_bookings = df[df['room_id'] == room_id]
+    
+    # Ensure room_id matches correctly
+    same_room_bookings = df[df['room_id'].astype(str) == str(room_id)]
 
+    # Convert to datetime
     new_check_in = pd.to_datetime(check_in)
     new_check_out = pd.to_datetime(check_out)
+
+    # Adjust for same-day booking to make it a 1-day booking
+    if new_check_in == new_check_out:
+        new_check_out += timedelta(days=1)
 
     for _, row in same_room_bookings.iterrows():
         existing_check_in = pd.to_datetime(row['check_in'])
         existing_check_out = pd.to_datetime(row['check_out'])
-        # If there's an overlap, return False
+
+        # Adjust existing same-day bookings as well
+        if existing_check_in == existing_check_out:
+            existing_check_out += timedelta(days=1)
+
+        # Check for overlap
         if not (new_check_out <= existing_check_in or new_check_in >= existing_check_out):
             return False
 
