@@ -15,7 +15,6 @@ class Admin(User):
 
         room_id = str(room_id)    
 
-        # Check if room_id is already in use
         if room_id in df['room_id'].values:
             print("Room ID already exists.")
             return

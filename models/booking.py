@@ -23,8 +23,6 @@ class Booking:
         }
         df.loc[len(df)] = new_row
         
-        # Alternatively, you could do:
-        # df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
 
         df.to_excel(bookings_file, index=False)
         print("Booking saved successfully.")
